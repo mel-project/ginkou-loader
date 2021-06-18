@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::{path::PathBuf, process::Command};
 
 use anyhow::Context;
 use argh::FromArgs;
@@ -15,7 +12,7 @@ use wry::{
 };
 
 #[derive(FromArgs)]
-/// Reach new heights.
+/// Load wallet html and run melwalletd.
 struct Args {
     /// path to compiled ginkou html
     #[argh(option)]
