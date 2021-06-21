@@ -1,4 +1,10 @@
-{ stdenv, system }
+{ stdenv,
+  system,
+  melwalletd,
+  ginkou,
+  ginkou-loader
+}:
+
 stdenv.mkDerivation {
   name = "ginkou";
   inherit system;

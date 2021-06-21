@@ -1,13 +1,13 @@
 {
   description = "Environment to package a tauri app";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-20.09";
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-21.05";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.melwalletd-flake.url = "github:themeliolabs/melwalletd";
   inputs.mozilla = { url = "github:mozilla/nixpkgs-mozilla"; flake = false; };
   inputs.ginkou-src = { url = "github:themeliolabs/ginkou"; flake = false; };
+  #inputs.ginkou-src = { url = "/home/casper/Programming/themelio/ginkou"; flake = false; };
   inputs.ginkou-loader-src = { url = "github:themeliolabs/ginkou-loader"; flake = false; };
-  #inputs.node2nix = { url = "https://github.com/svanderburg/node2nix"; flake = false; }
 
   outputs =
     { self
@@ -17,7 +17,6 @@
     , melwalletd-flake
     , ginkou-loader-src
     , ginkou-src
-    #, node2nix
     , ...
     } @inputs:
     let
@@ -59,17 +58,19 @@
           pname = "ginkou-loader-v${version}";
           version = "0.1.0";
           src = "${ginkou-loader-src}";
-          #sourceRoot = "source/tooling/cli.rs";
-          cargoSha256 = "sha256-v1dFLI8J3Ksg+lkw9fAwTYytXkj3ZLlB6086LPy9ZxY=";
+          cargoSha256 = "sha256-foJmaD2ZjHekIEHo/O/NssoGoywLpOE5diQ8oykUKSQ=";
         };
 
-        // TODO
-        #ginkou-deps = import "${ginkou-src}/rollup-build.nix" {};
-        ginkou = import "${ginkou-src}/rollup-build.nix" {};
+        ginkou = pkgs.callPackage "${ginkou-src}/rollup-build.nix" {
+          nodejs = pkgs.nodejs-12_x;
+          rollup = pkgs.nodePackages.rollup;
+        };
 
         melwalletd = melwalletd-flake.packages."${system}".melwalletd;
 
-        bundle = pkgs.callPackage ./bundle.nix {};
+        bundle = pkgs.callPackage ./bundle.nix {
+          inherit melwalletd ginkou ginkou-loader;
+        };
 
         tauri-deps = with pkgs; [
               (rustChannel.rust.override { extensions = [ "rust-src" ]; })
@@ -94,6 +95,7 @@
           # Produces ginkou binary and melwalletd linked binary
           defaultPackage = bundle;
 
+          /*
           devShell = pkgs.mkShell {
             buildInputs = with pkgs; [
               docker
@@ -123,5 +125,6 @@
               alias tauri='cargo-tauri tauri'
             '';
           };
+          */
         });
 }
