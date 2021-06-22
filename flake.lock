@@ -30,18 +30,6 @@
         "type": "github"
       }
     },
-    "ginkou-src": {
-      "flake": false,
-      "locked": {
-        "narHash": "sha256-LjG2fK6Wd+EPNtcvC/iud9/mlzahjtJSMOT2i0XkEm0=",
-        "path": "/home/casper/Programming/themelio/ginkou",
-        "type": "path"
-      },
-      "original": {
-        "path": "/home/casper/Programming/themelio/ginkou",
-        "type": "path"
-      }
-    },
     "melwalletd-flake": {
       "inputs": {
         "flake-utils": "flake-utils_2",
@@ -130,7 +118,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "ginkou-src": "ginkou-src",
         "melwalletd-flake": "melwalletd-flake",
         "mozilla": "mozilla_2",
         "nixpkgs": "nixpkgs_2"
