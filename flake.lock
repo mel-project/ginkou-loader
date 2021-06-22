@@ -30,36 +30,16 @@
         "type": "github"
       }
     },
-    "ginkou-loader-src": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1624049004,
-        "narHash": "sha256-fhBXkklJgayzSXdO5Q2vfpCI4IhyR9nEqTFjfiyCBdk=",
-        "owner": "themeliolabs",
-        "repo": "ginkou-loader",
-        "rev": "2bae83d94c596c21a056238c57563ad6cec5aeba",
-        "type": "github"
-      },
-      "original": {
-        "owner": "themeliolabs",
-        "repo": "ginkou-loader",
-        "type": "github"
-      }
-    },
     "ginkou-src": {
       "flake": false,
       "locked": {
-        "lastModified": 1624314837,
-        "narHash": "sha256-waXAs2dOx2ivO8etef7CbQzuGk/y1HGYkFV0IiFTDcA=",
-        "owner": "themeliolabs",
-        "repo": "ginkou",
-        "rev": "a6115af51eef746fa78e08f9c31654284c359998",
-        "type": "github"
+        "narHash": "sha256-LjG2fK6Wd+EPNtcvC/iud9/mlzahjtJSMOT2i0XkEm0=",
+        "path": "/home/casper/Programming/themelio/ginkou",
+        "type": "path"
       },
       "original": {
-        "owner": "themeliolabs",
-        "repo": "ginkou",
-        "type": "github"
+        "path": "/home/casper/Programming/themelio/ginkou",
+        "type": "path"
       }
     },
     "melwalletd-flake": {
@@ -70,11 +50,11 @@
         "selfDir": "selfDir"
       },
       "locked": {
-        "lastModified": 1624139021,
-        "narHash": "sha256-s0t9xjSXteo78kk/Aq37anHRaOauMiduf+/ljJTd+qk=",
+        "lastModified": 1624317210,
+        "narHash": "sha256-a8f9svtaX4SmocSME5DgYNBHsg6S24jVE3W6ncxSLko=",
         "owner": "themeliolabs",
         "repo": "melwalletd",
-        "rev": "e6c2ef9a9dd11d70f40a992a2e960729d2238680",
+        "rev": "8d2fad7c6ca14d4196d70da39fc73fa79cab109c",
         "type": "github"
       },
       "original": {
@@ -150,7 +130,6 @@
     "root": {
       "inputs": {
         "flake-utils": "flake-utils",
-        "ginkou-loader-src": "ginkou-loader-src",
         "ginkou-src": "ginkou-src",
         "melwalletd-flake": "melwalletd-flake",
         "mozilla": "mozilla_2",

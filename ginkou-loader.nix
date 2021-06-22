@@ -2,6 +2,8 @@
 , rustPlatform
 , stdenv
 , llvmPackages
+, buildInputs
+, nativeBuildInputs
 }:
 
 let
@@ -13,10 +15,12 @@ rustPlatform.buildRustPackage rec {
 
   src = ./.;
 
-  #cargoSha256 = lib.fakeSha256;
-  cargoSha256 = "sha256-foJmaD2ZjHekIEHo/O/NssoGoywLpOE5diQ8oykUKSQ=";
+  inherit buildInputs nativeBuildInputs;
 
-  LIBCLANG_PATH = "${llvmPackages.libclang}/lib";
+  #cargoSha256 = lib.fakeSha256;
+  cargoSha256 = "sha256-7Ekhy4R9j5SPfcx+87vfTfaxqfPrY3gG/vSKKyKyUQw=";
+
+  LIBCLANG_PATH = "${llvmPackages.libclang.lib}/lib";
   doCheck = false;
 
   preBuild = ''

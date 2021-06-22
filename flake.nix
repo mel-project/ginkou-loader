@@ -5,9 +5,9 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.melwalletd-flake.url = "github:themeliolabs/melwalletd";
   inputs.mozilla = { url = "github:mozilla/nixpkgs-mozilla"; flake = false; };
-  inputs.ginkou-src = { url = "github:themeliolabs/ginkou"; flake = false; };
-  #inputs.ginkou-src = { url = "/home/casper/Programming/themelio/ginkou"; flake = false; };
-  inputs.ginkou-loader-src = { url = "github:themeliolabs/ginkou-loader"; flake = false; };
+  #inputs.ginkou-src = { url = "github:themeliolabs/ginkou"; flake = false; };
+  inputs.ginkou-src = { url = "/home/casper/Programming/themelio/ginkou"; flake = false; };
+  #inputs.ginkou-loader-src = { url = "github:themeliolabs/ginkou-loader"; flake = false; };
 
   outputs =
     { self
@@ -15,7 +15,7 @@
     , mozilla
     , flake-utils
     , melwalletd-flake
-    , ginkou-loader-src
+    #, ginkou-loader-src
     , ginkou-src
     , ...
     } @inputs:
@@ -54,11 +54,33 @@
               rustc = rustChannel.rust;
             };
 
-        ginkou-loader = rustPlatform.buildRustPackage rec {
-          pname = "ginkou-loader-v${version}";
-          version = "0.1.0";
-          src = "${ginkou-loader-src}";
-          cargoSha256 = "sha256-foJmaD2ZjHekIEHo/O/NssoGoywLpOE5diQ8oykUKSQ=";
+        gtk-deps = with pkgs; [
+              (rustChannel.rust.override { extensions = [ "rust-src" ]; })
+              binutils
+              zlib
+              #wget
+              #curl
+              #openssl
+              #squashfsTools
+              #libsoup
+
+              glib
+              libappindicator-gtk3
+              webkit
+              gtk3
+              gtksourceview
+        ];
+
+        ginkou-loader = pkgs.callPackage ./ginkou-loader.nix {
+          buildInputs = gtk-deps;
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+            llvmPackages_12.llvm
+            llvmPackages_12.libclang
+            llvmPackages_12.libcxxClang
+            clang
+          ];
         };
 
         ginkou = pkgs.callPackage "${ginkou-src}/rollup-build.nix" {
@@ -71,23 +93,6 @@
         bundle = pkgs.callPackage ./bundle.nix {
           inherit melwalletd ginkou ginkou-loader;
         };
-
-        tauri-deps = with pkgs; [
-              (rustChannel.rust.override { extensions = [ "rust-src" ]; })
-              binutils
-              zlib
-              wget
-              curl
-              openssl
-              squashfsTools
-              pkg-config
-              libsoup
-
-              webkit
-              gtk3-x11
-              gtksourceview
-              libayatana-appindicator-gtk3
-        ];
 
         in rec {
           packages.ginkou-loader = ginkou-loader;
