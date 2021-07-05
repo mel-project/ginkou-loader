@@ -2,6 +2,7 @@ use std::{path::PathBuf, process::Command};
 
 use anyhow::Context;
 use argh::FromArgs;
+use mime_sniffer::MimeTypeSniffer;
 use wry::{
     application::{
         event::{Event, StartCause, WindowEvent},
@@ -47,7 +48,12 @@ fn main() -> anyhow::Result<()> {
             let mut path = args.html_path.clone();
             path.push(url);
             dbg!(&path);
-            Ok(std::fs::read(&path)?)
+            let bts = std::fs::read(&path)?;
+            let mime_type = bts
+                .sniff_mime_type()
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| String::from("application/octet-stream"));
+            Ok((std::fs::read(&path)?, mime_type))
         })
         .with_url("wry:///index.html")?
         .build()?;

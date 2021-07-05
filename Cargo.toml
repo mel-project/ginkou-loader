@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wry="0.9.4"
+wry={version="0.10", default-features=false, features=["file-drop", "protocol", "win32"]}
 anyhow="1"
 argh="0.1.4"
 urlencoding="1"
 scopeguard="1"
 dirs="3"
+mime-sniffer = "0.1"
