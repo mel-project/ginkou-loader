@@ -25,5 +25,11 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Update Apt
+        run: apt update
+
+      - name: Install GTK+ Dependencies
+        run: apt -y install libgtk-3-dev
+
       - name: Run Tests
         run: cargo test --locked --verbose
