@@ -19,19 +19,21 @@ struct Args {
     #[argh(option)]
     html_path: PathBuf,
     /// path to melwalletd
-    #[argh(option, default = "\"melwalletd\".into()")]
+    #[argh(option, default = r#""melwalletd".into()"#)]
     melwalletd_path: PathBuf,
-
     /// path to persistent data like cookies and Storage
     #[argh(option)]
     data_path: PathBuf,
+    /// path to the wallet
+    #[argh(option)]
+    wallet_dir: PathBuf,
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut wallets_dir = dirs::home_dir().context("cannot obtain home directory")?;
-    wallets_dir.push(".gk-melwallet");
 
     let args: Args = argh::from_env();
+
+    let wallets_dir = args.wallet_dir.clone();
 
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
