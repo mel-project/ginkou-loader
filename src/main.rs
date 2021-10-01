@@ -9,7 +9,7 @@ use wry::{
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
-    webview::WebViewBuilder,
+    webview::{WebViewBuilder, WebContext},
 };
 
 #[derive(FromArgs)]
@@ -21,6 +21,10 @@ struct Args {
     /// path to melwalletd
     #[argh(option, default = "\"melwalletd\".into()")]
     melwalletd_path: PathBuf,
+
+    /// path to persistent data like cookies and Storage
+    #[argh(option)]
+    data_path: PathBuf,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -35,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     smol::spawn(async move {
         let mut app = tide::new();
         app.at("/").serve_dir(html_path).unwrap();
-        let mut listener = app.bind("127.0.0.1:0").await.unwrap();
+        let mut listener = app.bind("127.0.0.123:12345").await.unwrap();
         send_addr
             .send(listener.info()[0].connection().to_string())
             .await
@@ -55,7 +59,7 @@ fn main() -> anyhow::Result<()> {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Hello World")
+        .with_title("Ginkou")
         .build(&event_loop)?;
     let _webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
@@ -66,6 +70,7 @@ fn main() -> anyhow::Result<()> {
         //     Ok(std::fs::read(&path)?)
         // })
         .with_url(&format!("{}/index.html", html_addr))?
+        .with_web_context(&mut WebContext::new(Some(args.data_path)))
         .build()?;
 
     event_loop.run(move |event, _, control_flow| {
