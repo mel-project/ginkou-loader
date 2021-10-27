@@ -63,7 +63,7 @@ fn main() -> anyhow::Result<()> {
     let window = WindowBuilder::new()
         .with_title("Ginkou")
         .build(&event_loop)?;
-    let _webview = WebViewBuilder::new(window)?
+    let webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
         //     let url = url.replace("wry://localhost/", "");
         //     let mut path = args.html_path.clone();
@@ -86,6 +86,9 @@ fn main() -> anyhow::Result<()> {
             } => {
                 scopeguard::defer!(cmd.kill().unwrap());
                 *control_flow = ControlFlow::Exit
+            }
+            Event::RedrawRequested(window) => {
+                webview.resize().expect("cannot resize webview");
             }
             _ => (),
         }
