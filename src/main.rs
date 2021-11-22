@@ -41,7 +41,7 @@ fn main() -> anyhow::Result<()> {
     smol::spawn(async move {
         let mut app = tide::new();
         app.at("/").serve_dir(html_path).unwrap();
-        let mut listener = app.bind("127.0.0.123:12345").await.unwrap();
+        let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
         send_addr
             .send(listener.info()[0].connection().to_string())
             .await
