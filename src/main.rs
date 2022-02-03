@@ -2,6 +2,7 @@ use std::{path::PathBuf, process::Command};
 
 use anyhow::Context;
 use argh::FromArgs;
+use tap::Tap;
 use tide::listener::Listener;
 use wry::{
     application::{
@@ -9,7 +10,7 @@ use wry::{
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
-    webview::{WebViewBuilder, WebContext},
+    webview::{WebContext, WebViewBuilder},
 };
 
 #[derive(FromArgs)]
@@ -23,17 +24,25 @@ struct Args {
     melwalletd_path: PathBuf,
     /// path to persistent data like cookies and Storage
     #[argh(option)]
-    data_path: PathBuf,
+    data_path: Option<PathBuf>,
     /// path to the wallet
     #[argh(option)]
-    wallet_dir: PathBuf,
+    wallet_path: Option<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
-
     let args: Args = argh::from_env();
 
-    let wallets_dir = args.wallet_dir.clone();
+    let wallet_path = args.wallet_path.clone().unwrap_or_else(|| {
+        dirs::data_local_dir()
+            .expect("no wallet directory")
+            .tap_mut(|d| d.push("themelio-wallets"))
+    });
+    let data_path = args.data_path.clone().unwrap_or_else(|| {
+        dirs::data_local_dir()
+            .expect("no wallet directory")
+            .tap_mut(|d| d.push("themelio-wallet-gui-data"))
+    });
 
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
@@ -55,7 +64,7 @@ fn main() -> anyhow::Result<()> {
     // TODO: start melwalletd with proper options, especially authentication!
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
         .arg("--wallet-dir")
-        .arg(wallets_dir.as_os_str())
+        .arg(wallet_path.as_os_str())
         .spawn()
         .context("cannot spawn melwalletd")?;
 
@@ -72,7 +81,7 @@ fn main() -> anyhow::Result<()> {
         //     Ok(std::fs::read(&path)?)
         // })
         .with_url(&format!("{}/index.html", html_addr))?
-        .with_web_context(&mut WebContext::new(Some(args.data_path)))
+        .with_web_context(&mut WebContext::new(Some(data_path)))
         .build()?;
 
     event_loop.run(move |event, _, control_flow| {
