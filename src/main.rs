@@ -6,9 +6,10 @@ use tap::Tap;
 use tide::listener::Listener;
 use wry::{
     application::{
+        dpi::LogicalSize,
         event::{Event, StartCause, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
-        window::WindowBuilder, dpi::LogicalSize,
+        window::WindowBuilder,
     },
     webview::{WebContext, WebViewBuilder},
 };
@@ -71,7 +72,8 @@ fn main() -> anyhow::Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Ginkou")
-        .with_inner_size(LogicalSize::new(400,600))
+        .with_inner_size(LogicalSize::new(400, 712))
+        .with_resizable(false)
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
