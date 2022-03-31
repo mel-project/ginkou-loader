@@ -71,8 +71,8 @@ fn main() -> anyhow::Result<()> {
 
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Ginkou")
-        .with_inner_size(LogicalSize::new(400, 712))
+        .with_title("Mellis")
+        .with_inner_size(LogicalSize::new(400, 600))
         .with_resizable(false)
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
