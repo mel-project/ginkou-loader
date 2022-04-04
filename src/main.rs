@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command};
+use std::{path::PathBuf, process::Command, time::Duration};
 
 use anyhow::Context;
 use argh::FromArgs;
@@ -11,7 +11,7 @@ use wry::{
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
-    webview::{WebContext, WebViewBuilder},
+    webview::{RpcResponse, WebContext, WebViewBuilder},
 };
 
 #[derive(FromArgs)]
@@ -73,7 +73,6 @@ fn main() -> anyhow::Result<()> {
     let window = WindowBuilder::new()
         .with_title("Mellis")
         .with_inner_size(LogicalSize::new(400, 600))
-        .with_resizable(false)
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
@@ -85,6 +84,27 @@ fn main() -> anyhow::Result<()> {
         // })
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
+        .with_rpc_handler(|window, req| {
+            match req.method.as_str() {
+                "set_conversion_factor" => {
+                    let convfact: (f64,) = serde_json::from_value(req.params.unwrap()).unwrap();
+                    let factor = convfact.0;
+                    eprintln!("SET CONVERSION FACTOR {}", factor);
+                    window.set_inner_size(LogicalSize {
+                        width: 400.0 * factor,
+                        height: 600.0 * factor,
+                    }); 
+                    window.set_resizable(false);
+                    Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
+                }
+                _ => panic!("dunno wut to do")
+            }
+        })
+        .with_initialization_script(r"
+        window.onload = function() {
+            window.rpc.call('set_conversion_factor', parseFloat(getComputedStyle(document.documentElement).fontSize) / 16);
+        }
+        ")
         .build()?;
 
     event_loop.run(move |event, _, control_flow| {
