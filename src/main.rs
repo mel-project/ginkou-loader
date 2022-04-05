@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Mellis")
-        .with_inner_size(LogicalSize::new(400, 600))
+        .with_inner_size(LogicalSize::new(500, 800))
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
@@ -91,8 +91,8 @@ fn main() -> anyhow::Result<()> {
                     let factor = convfact.0;
                     eprintln!("SET CONVERSION FACTOR {}", factor);
                     window.set_inner_size(LogicalSize {
-                        width: 400.0 * factor,
-                        height: 600.0 * factor,
+                        width: 500.0 * factor,
+                        height: 800.0 * factor,
                     }); 
                     window.set_resizable(false);
                     Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
