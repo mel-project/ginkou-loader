@@ -6,7 +6,7 @@ use tap::Tap;
 use tide::listener::Listener;
 use wry::{
     application::{
-        dpi::LogicalSize,
+        dpi::PhysicalSize,
         event::{Event, StartCause, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -72,7 +72,7 @@ fn main() -> anyhow::Result<()> {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Mellis")
-        .with_inner_size(LogicalSize::new(400, 700))
+        .with_inner_size(PhysicalSize::new(400, 700))
         .build(&event_loop)?;
     let webview = WebViewBuilder::new(window)?
         // .with_custom_protocol("wry".to_string(), move |_, url| {
