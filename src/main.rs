@@ -1,4 +1,4 @@
-use std::{path::PathBuf, process::Command, time::Duration};
+use std::{path::PathBuf, process::Command};
 
 use anyhow::Context;
 use argh::FromArgs;
@@ -119,7 +119,7 @@ fn main() -> anyhow::Result<()> {
                 scopeguard::defer!(cmd.kill().unwrap());
                 *control_flow = ControlFlow::Exit
             }
-            Event::RedrawRequested(window) => {
+            Event::RedrawRequested(_window) => {
                 webview.resize().expect("cannot resize webview");
             }
             _ => (),
