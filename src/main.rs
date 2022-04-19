@@ -118,7 +118,7 @@ fn main() -> anyhow::Result<()> {
                     window.set_resizable(false);
                     Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
                 }
-                _ => panic!("dunno wut to do")
+                _ => None
             }
         })
         .with_initialization_script(r"
