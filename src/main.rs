@@ -118,7 +118,31 @@ fn main() -> anyhow::Result<()> {
                     window.set_resizable(false);
                     Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
                 }
-                _ => None
+                "download-logs" => {
+                    let mut data;
+                    let future = async {
+                        let file = AsyncFileDialog::new()
+                            .add_filter("text", &["txt", "rs"])
+                            .add_filter("rust", &["rs", "toml"])
+                            .set_directory("/")
+                            .pick_file()
+                            .await;
+                    
+                        data = file.unwrap().read().await;
+                    };
+                    println!("{data}");
+                    None
+                }
+                anything => {
+                    let output = {
+                        if anything.trim().is_empty() {
+                            "<empty>"
+                        }
+                        else{ anything }
+                    };
+                    println!("Called non-existent rpc: {}({})", output, req.params.unwrap());
+                    None
+                }
             }
         })
         .with_initialization_script(r"
