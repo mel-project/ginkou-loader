@@ -1,7 +1,7 @@
 use std::{path::PathBuf, process::Command};
 
+use clap::{Parser, ArgGroup};
 use anyhow::Context;
-use argh::FromArgs;
 use tap::Tap;
 use tide::listener::Listener;
 use wry::{
@@ -14,25 +14,35 @@ use wry::{
     webview::{RpcResponse, WebContext, WebViewBuilder},
 };
 
-#[derive(FromArgs)]
+#[derive(Parser)]
+#[clap(group(
+    ArgGroup::new("html_locator")
+        .required(true)
+        .args(&["dev-port", "html-path"]),
+))]
 /// Load wallet html and run melwalletd.
 struct Args {
+    ///listen for ginkou on http://localhost:<port>
+    #[clap(long)]
+    dev_port: Option<u32>,
     /// path to compiled ginkou html
-    #[argh(option)]
-    html_path: PathBuf,
+    #[clap(long)]
+    html_path: Option<PathBuf>,
     /// path to melwalletd
-    #[argh(option, default = r#""melwalletd".into()"#)]
+    #[clap(long,default_value = r#"melwalletd"#)]
     melwalletd_path: PathBuf,
     /// path to persistent data like cookies and Storage
-    #[argh(option)]
+    #[clap(long)]
     data_path: Option<PathBuf>,
     /// path to the wallet
-    #[argh(option)]
+    #[clap(long)]
     wallet_path: Option<PathBuf>,
+
+    
 }
 
 fn main() -> anyhow::Result<()> {
-    let args: Args = argh::from_env();
+    let args: Args = Args::parse();
 
     let wallet_path = args.wallet_path.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
@@ -48,19 +58,30 @@ fn main() -> anyhow::Result<()> {
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
     let (send_addr, recv_addr) = smol::channel::unbounded();
-    smol::spawn(async move {
-        let mut app = tide::new();
-        app.at("/").serve_dir(html_path).unwrap();
-        let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
-        send_addr
-            .send(listener.info()[0].connection().to_string())
-            .await
-            .unwrap();
-        listener.accept().await.unwrap()
-    })
-    .detach();
-    let html_addr = smol::future::block_on(recv_addr.recv())?;
+    let port = args.dev_port;
 
+    let html_addr = match port.clone() {
+
+        None => {
+            smol::spawn(async move {
+                let mut app = tide::new();
+                app.at("/").serve_dir(html_path.unwrap()).unwrap();
+                let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
+                send_addr
+                    .send(listener.info()[0].connection().to_string())
+                    .await
+                    .unwrap();
+                listener.accept().await.unwrap()
+            })
+            .detach();
+            smol::future::block_on(recv_addr.recv())?
+        },
+        Some(_) =>  format!("http://localhost:{}", port.unwrap())
+    };
+
+
+    eprintln!("{html_addr}");
+    eprintln!("{:?}", args.melwalletd_path.clone().as_os_str());
     // first start melwalletd
     // TODO: start melwalletd with proper options, especially authentication!
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
