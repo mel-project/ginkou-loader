@@ -1,31 +1,26 @@
 [package]
 name = "ginkou-loader"
 version = "0.4.0"
-authors = ["nullchinchilla <nullchinchilla@pm.me>"]
-edition = "2018"
+authors = ["nullchinchilla <nullchinchilla@pm.me>", "Meade Kincke <meade@themelio.org"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# [dependencies.wry]
-# version = "0.12.2"
-# default-features = false
-# features = ["file-drop", "protocol"]
-
 [dependencies.wry]
-git = "https://github.com/tauri-apps/wry"
-rev = "e056fb2a15e29de1b8ed85a548cfeb1f85031357"
-default-features=false
+version = "0.15.0"
+default-features = false
+features = ["devtools"]
 
 [dependencies]
 
 anyhow = "1"
 dirs = "4.0.0"
-# mime-sniffer = "0.1"
 scopeguard = "1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.79"
 smol = "1"
+tap = "1.0.1"
+clap = { version="3.1.9", features=["derive"]}
+# rfd = "0.8.2"
 tide = "0.16"
 urlencoding = "2.1.0"
-tap = "1.0.1"
-serde_json = "1.0.79"
-clap = { version="3.1.9", features=["derive"]}
-rfd = "0.8.2"

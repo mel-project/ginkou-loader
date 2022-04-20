@@ -1,5 +1,4 @@
 use std::{path::PathBuf, process::Command};
-
 use clap::{Parser, ArgGroup};
 use anyhow::Context;
 use tap::Tap;
@@ -11,9 +10,12 @@ use wry::{
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
-    webview::{RpcResponse, WebContext, WebViewBuilder},
+    webview::{WebContext, WebViewBuilder},
 };
 
+use crate::ipc::IPCRequest;
+
+mod ipc;
 #[derive(Parser)]
 #[clap(group(
     ArgGroup::new("html_locator")
@@ -37,6 +39,10 @@ struct Args {
     /// path to the wallet
     #[clap(long)]
     wallet_path: Option<PathBuf>,
+    #[clap(long)]
+    debug_window_open: bool,
+    #[clap(long)]
+    devtools: bool,
 
     
 }
@@ -44,12 +50,12 @@ struct Args {
 fn main() -> anyhow::Result<()> {
     let args: Args = Args::parse();
 
-    let wallet_path = args.wallet_path.clone().unwrap_or_else(|| {
+    let wallet_path: PathBuf = args.wallet_path.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
             .expect("no wallet directory")
             .tap_mut(|d| d.push("themelio-wallets"))
     });
-    let data_path = args.data_path.clone().unwrap_or_else(|| {
+    let data_path: PathBuf = args.data_path.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
             .expect("no wallet directory")
             .tap_mut(|d| d.push("themelio-wallet-gui-data"))
@@ -89,70 +95,25 @@ fn main() -> anyhow::Result<()> {
         .arg(wallet_path.as_os_str())
         .spawn()
         .context("cannot spawn melwalletd")?;
+    let script = include_str!("./js/index.js");
+    let event_loop: EventLoop<()> = EventLoop::new();
 
-    let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
-        .with_title("Mellis")
+        .with_title("Mellis")        
         .with_inner_size(PhysicalSize::new(400, 700))
         .build(&event_loop)?;
+
     let webview = WebViewBuilder::new(window)?
-        // .with_custom_protocol("wry".to_string(), move |_, url| {
-        //     let url = url.replace("wry://localhost/", "");
-        //     let mut path = args.html_path.clone();
-        //     path.push(url);
-        //     dbg!(&path);
-        //     Ok(std::fs::read(&path)?)
-        // })
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
-        .with_rpc_handler(|window, req| {
-            match req.method.as_str() {
-                "set_conversion_factor" => {
-                    let convfact: (f64,) = serde_json::from_value(req.params.unwrap()).unwrap();
-                    let factor = convfact.0;
-                    eprintln!("SET CONVERSION FACTOR {}", factor);
-                    window.set_inner_size(PhysicalSize {
-                        width: 400.0 * factor,
-                        height: 700.0 * factor,
-                    }); 
-                    window.set_resizable(false);
-                    Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
-                }
-                "download-logs" => {
-                    let mut data;
-                    let future = async {
-                        let file = AsyncFileDialog::new()
-                            .add_filter("text", &["txt", "rs"])
-                            .add_filter("rust", &["rs", "toml"])
-                            .set_directory("/")
-                            .pick_file()
-                            .await;
-                    
-                        data = file.unwrap().read().await;
-                    };
-                    println!("{data}");
-                    None
-                }
-                anything => {
-                    let output = {
-                        if anything.trim().is_empty() {
-                            "<empty>"
-                        }
-                        else{ anything }
-                    };
-                    println!("Called non-existent rpc: {}({})", output, req.params.unwrap());
-                    None
-                }
-            }
-        })
-        .with_initialization_script(r"
-        window.onload = function() {
-            window.rpc.call('set_conversion_factor', parseFloat(getComputedStyle(document.documentElement).fontSize) / 16);
-        }
-        ")
+        .with_devtools(args.devtools)
+        .with_ipc_handler(IPCRequest::handler)
+        .with_initialization_script(script)
         .build()?;
 
-    event_loop.run(move |event, _, control_flow| {
+    if args.debug_window_open { webview.open_devtools() } ;
+
+    event_loop.run(move |event, _event_loop_window_target, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
