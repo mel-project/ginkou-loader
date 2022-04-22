@@ -8,13 +8,17 @@ use tap::Tap;
 use tide::listener::Listener;
 use wry::{
     application::{
-        dpi::{PhysicalSize, LogicalSize},
+        dpi::{ LogicalSize},
         event::{Event, StartCause, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
     webview::{RpcResponse, WebContext, WebViewBuilder},
 };
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 
 #[derive(FromArgs)]
 /// Load wallet html and run melwalletd.
@@ -71,6 +75,10 @@ fn main() -> anyhow::Result<()> {
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
+        .tap_mut(|_c| {
+            #[cfg(windows)]
+            _c.creation_flags(0x08000000);
+        })
         .spawn()
         .context("cannot spawn melwalletd")?;
 
