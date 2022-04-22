@@ -1,6 +1,6 @@
 #![windows_subsystem = "windows"]
 
-use std::{path::PathBuf, process::Command};
+use std::{path::PathBuf, process::{Command, Stdio}};
 
 use anyhow::Context;
 use argh::FromArgs;
@@ -68,6 +68,9 @@ fn main() -> anyhow::Result<()> {
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
         .arg("--wallet-dir")
         .arg(wallet_path.as_os_str())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .context("cannot spawn melwalletd")?;
 
