@@ -3,9 +3,9 @@
 use std::{path::PathBuf, process::{Command, Stdio}};
 
 use anyhow::Context;
-use argh::FromArgs;
 use tap::Tap;
 use tide::listener::Listener;
+use clap::{Parser, ArgGroup};
 use wry::{
     application::{
         dpi::{ LogicalSize},
@@ -13,39 +13,55 @@ use wry::{
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
     },
-    webview::{RpcResponse, WebContext, WebViewBuilder},
+    webview::{WebContext, WebViewBuilder},
 };
+
+use crate::ipc::IPCRequest;
+
+mod ipc;
 
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
-
-
-#[derive(FromArgs)]
+#[derive(Parser, Clone)]
+#[clap(group(
+    ArgGroup::new("html_locator")
+        .required(true)
+        .args(&["dev-port", "html-path"]),
+))]
 /// Load wallet html and run melwalletd.
-struct Args {
+pub struct Args {
+    ///listen for ginkou on http://localhost:<port>
+    #[clap(long)]
+    dev_port: Option<u32>,
     /// path to compiled ginkou html
-    #[argh(option)]
-    html_path: PathBuf,
+    #[clap(long)]
+    html_path: Option<PathBuf>,
     /// path to melwalletd
-    #[argh(option, default = r#""melwalletd".into()"#)]
+    #[clap(long,default_value = r#"melwalletd"#)]
     melwalletd_path: PathBuf,
     /// path to persistent data like cookies and Storage
-    #[argh(option)]
+    #[clap(long)]
     data_path: Option<PathBuf>,
     /// path to the wallet
-    #[argh(option)]
+    #[clap(long)]
     wallet_path: Option<PathBuf>,
+    #[clap(long)]
+    debug_window_open: bool,
+    #[clap(long)]
+    devtools: bool,
+
+    
 }
 
 fn main() -> anyhow::Result<()> {
-    let args: Args = argh::from_env();
+    let args: Args = Args::parse();
 
-    let wallet_path = args.wallet_path.clone().unwrap_or_else(|| {
+    let wallet_path: PathBuf = args.wallet_path.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
             .expect("no wallet directory")
             .tap_mut(|d| d.push("themelio-wallets"))
     });
-    let data_path = args.data_path.clone().unwrap_or_else(|| {
+    let data_path: PathBuf = args.data_path.clone().unwrap_or_else(|| {
         dirs::data_local_dir()
             .expect("no wallet directory")
             .tap_mut(|d| d.push("themelio-wallet-gui-data"))
@@ -54,19 +70,30 @@ fn main() -> anyhow::Result<()> {
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
     let (send_addr, recv_addr) = smol::channel::unbounded();
-    smol::spawn(async move {
-        let mut app = tide::new();
-        app.at("/").serve_dir(html_path).unwrap();
-        let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
-        send_addr
-            .send(listener.info()[0].connection().to_string())
-            .await
-            .unwrap();
-        listener.accept().await.unwrap()
-    })
-    .detach();
-    let html_addr = smol::future::block_on(recv_addr.recv())?;
+    let port = args.dev_port;
 
+    let html_addr = match port.clone() {
+
+        None => {
+            smol::spawn(async move {
+                let mut app = tide::new();
+                app.at("/").serve_dir(html_path.unwrap()).unwrap();
+                let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
+                send_addr
+                    .send(listener.info()[0].connection().to_string())
+                    .await
+                    .unwrap();
+                listener.accept().await.unwrap()
+            })
+            .detach();
+            smol::future::block_on(recv_addr.recv())?
+        },
+        Some(_) =>  format!("http://localhost:{}", port.unwrap())
+    };
+
+
+    eprintln!("{html_addr}");
+    eprintln!("{:?}", args.melwalletd_path.clone().as_os_str());
     // first start melwalletd
     // TODO: start melwalletd with proper options, especially authentication!
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
@@ -81,46 +108,25 @@ fn main() -> anyhow::Result<()> {
         })
         .spawn()
         .context("cannot spawn melwalletd")?;
+    let script = include_str!("./js/index.js");
+    let event_loop: EventLoop<()> = EventLoop::new();
 
-    let event_loop = EventLoop::new();
     let window = WindowBuilder::new()
         .with_title("Mellis")
         .with_inner_size(LogicalSize::new(420, 800))
         .build(&event_loop)?;
+
     let webview = WebViewBuilder::new(window)?
-        // .with_custom_protocol("wry".to_string(), move |_, url| {
-        //     let url = url.replace("wry://localhost/", "");
-        //     let mut path = args.html_path.clone();
-        //     path.push(url);
-        //     dbg!(&path);
-        //     Ok(std::fs::read(&path)?)
-        // })
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
-        .with_rpc_handler(|window, req| {
-            match req.method.as_str() {
-                "set_conversion_factor" => {
-                    let convfact: (f64,) = serde_json::from_value(req.params.unwrap()).unwrap();
-                    let factor = convfact.0/0.95;
-                    eprintln!("SET CONVERSION FACTOR {}", factor);
-                    window.set_inner_size(LogicalSize {
-                        width: 420.0 * factor,
-                        height: 800.0 * factor,
-                    }); 
-                    window.set_resizable(false);
-                    Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
-                }
-                _ => panic!("dunno wut to do")
-            }
-        })
-        .with_initialization_script(r"
-        window.onload = function() {
-            window.rpc.call('set_conversion_factor', parseFloat(getComputedStyle(document.documentElement).fontSize) / 16);
-        }
-        ")
+        .with_devtools(args.devtools)
+        .with_ipc_handler(IPCRequest::handler_with_context(args.clone()))
+        .with_initialization_script(script)
         .build()?;
 
-    event_loop.run(move |event, _, control_flow| {
+    if args.debug_window_open { webview.open_devtools() } ;
+
+    event_loop.run(move |event, _event_loop_window_target, control_flow| {
         *control_flow = ControlFlow::Wait;
 
         match event {
