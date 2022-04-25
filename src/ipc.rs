@@ -1,6 +1,6 @@
 use rfd::{FileDialog};
 use serde::Deserialize;
-use wry::application::{dpi::PhysicalSize, window::Window};
+use wry::application::{dpi::LogicalSize, window::Window};
 
 use crate::Args;
 
@@ -24,16 +24,14 @@ impl IPCRequest {
             eprintln!("Request: {ipc:?}");
             match ipc {
                 IPCRequest::SetConversionFactor { conversion_factor } => {
-                    let factor: f64 = conversion_factor;
-
-                    // eprintln!("SET CONVERSION FACTOR {}", factor);
-
-                    window.set_inner_size(PhysicalSize {
-                        width: 400.0 * factor,
-                        height: 700.0 * factor,
-                    });
+                    let factor = conversion_factor/0.95;
+                    eprintln!("SET CONVERSION FACTOR {}", factor);
+                    window.set_inner_size(LogicalSize {
+                        width: 420.0 * factor,
+                        height: 800.0 * factor,
+                    }); 
                     window.set_resizable(false);
-                    // Some(RpcResponse::new_result(req.id, Some(serde_json::to_value(0.0f64).unwrap())))
+                    
                 }
                 IPCRequest::DownloadLogs => {
                     let file = FileDialog::new()

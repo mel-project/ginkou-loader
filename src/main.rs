@@ -1,11 +1,14 @@
-use std::{path::PathBuf, process::Command};
-use clap::{Parser, ArgGroup};
+#![windows_subsystem = "windows"]
+
+use std::{path::PathBuf, process::{Command, Stdio}};
+
 use anyhow::Context;
 use tap::Tap;
 use tide::listener::Listener;
+use clap::{Parser, ArgGroup};
 use wry::{
     application::{
-        dpi::PhysicalSize,
+        dpi::{ LogicalSize},
         event::{Event, StartCause, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -16,6 +19,9 @@ use wry::{
 use crate::ipc::IPCRequest;
 
 mod ipc;
+
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
 #[derive(Parser, Clone)]
 #[clap(group(
     ArgGroup::new("html_locator")
@@ -93,14 +99,21 @@ fn main() -> anyhow::Result<()> {
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
         .arg("--wallet-dir")
         .arg(wallet_path.as_os_str())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .tap_mut(|_c| {
+            #[cfg(windows)]
+            _c.creation_flags(0x08000000);
+        })
         .spawn()
         .context("cannot spawn melwalletd")?;
     let script = include_str!("./js/index.js");
     let event_loop: EventLoop<()> = EventLoop::new();
 
     let window = WindowBuilder::new()
-        .with_title("Mellis")        
-        .with_inner_size(PhysicalSize::new(400, 700))
+        .with_title("Mellis")
+        .with_inner_size(LogicalSize::new(420, 800))
         .build(&event_loop)?;
 
     let webview = WebViewBuilder::new(window)?
