@@ -16,14 +16,14 @@ use wry::{
 use crate::ipc::IPCRequest;
 
 mod ipc;
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[clap(group(
     ArgGroup::new("html_locator")
         .required(true)
         .args(&["dev-port", "html-path"]),
 ))]
 /// Load wallet html and run melwalletd.
-struct Args {
+pub struct Args {
     ///listen for ginkou on http://localhost:<port>
     #[clap(long)]
     dev_port: Option<u32>,
@@ -107,7 +107,7 @@ fn main() -> anyhow::Result<()> {
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
         .with_devtools(args.devtools)
-        .with_ipc_handler(IPCRequest::handler)
+        .with_ipc_handler(IPCRequest::handler_with_context(args.clone()))
         .with_initialization_script(script)
         .build()?;
 
