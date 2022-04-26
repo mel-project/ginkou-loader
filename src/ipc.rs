@@ -1,12 +1,11 @@
-use rfd::{FileDialog};
+use crate::Args;
+use rfd::FileDialog;
 use serde::Deserialize;
+use std::time::Duration;
 use wry::application::{dpi::LogicalSize, window::Window};
 
-use crate::Args;
-
-
 #[derive(Deserialize, Debug)]
-enum LogLevel{
+enum LogLevel {
     Log,
     Debug,
     Info,
@@ -20,7 +19,7 @@ pub enum IPCRequest {
         conversion_factor: f64,
     },
     DownloadLogs,
-    Log{
+    Log {
         level: LogLevel,
         message: String,
     },
@@ -37,14 +36,14 @@ impl IPCRequest {
             eprintln!("Request: {ipc:?}");
             match ipc {
                 IPCRequest::SetConversionFactor { conversion_factor } => {
-                    let factor = conversion_factor/0.95;
+                    // window.set_resizable(true);
+                    let factor = conversion_factor / 0.95;
                     eprintln!("SET CONVERSION FACTOR {}", factor);
                     window.set_inner_size(LogicalSize {
-                        width: 420.0 * factor,
+                        width: 390.0 * factor,
                         height: 600.0 * factor,
-                    }); 
-                    // window.set_resizable(false);
-                    
+                    });
+                    window.set_resizable(false);
                 }
                 IPCRequest::DownloadLogs => {
                     let file = FileDialog::new()
@@ -55,7 +54,7 @@ impl IPCRequest {
                     println!("{file:?}");
                     // smol::future::block_on(future.await);
                 }
-                IPCRequest::Log{level, message} => {
+                IPCRequest::Log { level, message } => {
                     let file = FileDialog::new()
                         .set_directory("~/")
                         .pick_folder()

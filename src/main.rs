@@ -1,14 +1,17 @@
 #![windows_subsystem = "windows"]
 
-use std::{path::PathBuf, process::{Command, Stdio}};
+use std::{
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use anyhow::Context;
+use clap::{ArgGroup, Parser};
 use tap::Tap;
 use tide::listener::Listener;
-use clap::{Parser, ArgGroup};
 use wry::{
     application::{
-        dpi::{ LogicalSize},
+        dpi::LogicalSize,
         event::{Event, StartCause, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
         window::WindowBuilder,
@@ -37,7 +40,7 @@ pub struct Args {
     #[clap(long)]
     html_path: Option<PathBuf>,
     /// path to melwalletd
-    #[clap(long,default_value = r#"melwalletd"#)]
+    #[clap(long, default_value = r#"melwalletd"#)]
     melwalletd_path: PathBuf,
     /// path to persistent data like cookies and Storage
     #[clap(long)]
@@ -49,13 +52,10 @@ pub struct Args {
     debug_window_open: bool,
     #[clap(long)]
     devtools: bool,
-
-    
 }
 
 fn main() -> anyhow::Result<()> {
-
-    let args: Args =  {
+    let args: Args = {
         let mut args = Args::parse();
 
         args.wallet_path = Some(args.wallet_path.unwrap_or_else(|| {
@@ -70,7 +70,7 @@ fn main() -> anyhow::Result<()> {
                 .tap_mut(|d| d.push("themelio-wallet-gui-data"))
         }));
 
-        args 
+        args
     };
 
     let wallet_path = args.wallet_path.clone().unwrap();
@@ -81,7 +81,6 @@ fn main() -> anyhow::Result<()> {
     let port = args.dev_port;
 
     let html_addr = match port.clone() {
-
         None => {
             smol::spawn(async move {
                 let mut app = tide::new();
@@ -95,10 +94,9 @@ fn main() -> anyhow::Result<()> {
             })
             .detach();
             smol::future::block_on(recv_addr.recv())?
-        },
-        Some(_) =>  format!("http://localhost:{}", port.unwrap())
+        }
+        Some(_) => format!("http://localhost:{}", port.unwrap()),
     };
-
 
     eprintln!("{html_addr}");
     eprintln!("{:?}", args.melwalletd_path.clone().as_os_str());
@@ -121,11 +119,10 @@ fn main() -> anyhow::Result<()> {
 
     let window = WindowBuilder::new()
         .with_title("Mellis")
-        .with_inner_size(LogicalSize::new(420, 600))
-        // .with_resizable(true)
+        .with_inner_size(LogicalSize::new(390, 600))
+        .with_resizable(true)
         .build(&event_loop)?;
 
-    window.set_resizable(true);
     let webview = WebViewBuilder::new(window)?
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
@@ -134,7 +131,9 @@ fn main() -> anyhow::Result<()> {
         .with_initialization_script(script)
         .build()?;
 
-    if args.debug_window_open { webview.open_devtools() } ;
+    if args.debug_window_open {
+        webview.open_devtools()
+    };
 
     event_loop.run(move |event, _event_loop_window_target, control_flow| {
         *control_flow = ControlFlow::Wait;
