@@ -4,6 +4,15 @@ use wry::application::{dpi::LogicalSize, window::Window};
 
 use crate::Args;
 
+
+#[derive(Deserialize, Debug)]
+enum LogLevel{
+    Log,
+    Debug,
+    Info,
+    Warning,
+    Error,
+}
 #[derive(Debug, Deserialize)]
 #[serde(tag = "_event", rename_all = "kebab-case")]
 pub enum IPCRequest {
@@ -11,6 +20,10 @@ pub enum IPCRequest {
         conversion_factor: f64,
     },
     DownloadLogs,
+    Log{
+        level: LogLevel,
+        message: String,
+    },
     #[serde(skip)]
     Unknown(String),
 }
@@ -28,12 +41,21 @@ impl IPCRequest {
                     eprintln!("SET CONVERSION FACTOR {}", factor);
                     window.set_inner_size(LogicalSize {
                         width: 420.0 * factor,
-                        height: 800.0 * factor,
+                        height: 600.0 * factor,
                     }); 
-                    window.set_resizable(false);
+                    // window.set_resizable(false);
                     
                 }
                 IPCRequest::DownloadLogs => {
+                    let file = FileDialog::new()
+                        .set_directory("~/")
+                        .pick_folder()
+                        .unwrap_or_default();
+
+                    println!("{file:?}");
+                    // smol::future::block_on(future.await);
+                }
+                IPCRequest::Log{level, message} => {
                     let file = FileDialog::new()
                         .set_directory("~/")
                         .pick_folder()
