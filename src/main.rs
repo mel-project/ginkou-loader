@@ -54,19 +54,27 @@ pub struct Args {
 }
 
 fn main() -> anyhow::Result<()> {
-    let args: Args = Args::parse();
 
-    let wallet_path: PathBuf = args.wallet_path.clone().unwrap_or_else(|| {
-        dirs::data_local_dir()
-            .expect("no wallet directory")
-            .tap_mut(|d| d.push("themelio-wallets"))
-    });
-    let data_path: PathBuf = args.data_path.clone().unwrap_or_else(|| {
-        dirs::data_local_dir()
-            .expect("no wallet directory")
-            .tap_mut(|d| d.push("themelio-wallet-gui-data"))
-    });
+    let args: Args =  {
+        let mut args = Args::parse();
 
+        args.wallet_path = Some(args.wallet_path.unwrap_or_else(|| {
+            dirs::data_local_dir()
+                .expect("no wallet directory")
+                .tap_mut(|d| d.push("themelio-wallets"))
+        }));
+
+        args.data_path = Some(args.data_path.unwrap_or_else(|| {
+            dirs::data_local_dir()
+                .expect("no wallet directory")
+                .tap_mut(|d| d.push("themelio-wallet-gui-data"))
+        }));
+
+        args 
+    };
+
+    let wallet_path = args.wallet_path.clone().unwrap();
+    let data_path = args.data_path.clone().unwrap();
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
     let (send_addr, recv_addr) = smol::channel::unbounded();
@@ -113,9 +121,11 @@ fn main() -> anyhow::Result<()> {
 
     let window = WindowBuilder::new()
         .with_title("Mellis")
-        .with_inner_size(LogicalSize::new(420, 800))
+        .with_inner_size(LogicalSize::new(420, 600))
+        // .with_resizable(true)
         .build(&event_loop)?;
 
+    window.set_resizable(true);
     let webview = WebViewBuilder::new(window)?
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
@@ -139,7 +149,7 @@ fn main() -> anyhow::Result<()> {
                 *control_flow = ControlFlow::Exit
             }
             Event::RedrawRequested(_window) => {
-                webview.resize().expect("cannot resize webview");
+                // webview.resize();
             }
             _ => (),
         }
