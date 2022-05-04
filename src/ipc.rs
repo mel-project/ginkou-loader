@@ -1,11 +1,10 @@
 use crate::Args;
 use rfd::FileDialog;
 use serde::Deserialize;
-use std::time::Duration;
 use wry::application::{dpi::LogicalSize, window::Window};
 
 #[derive(Deserialize, Debug)]
-enum LogLevel {
+pub enum LogLevel {
     Log,
     Debug,
     Info,
@@ -23,12 +22,15 @@ pub enum IPCRequest {
         level: LogLevel,
         message: String,
     },
+    OpenBrowser {
+        url: String,
+    },
     #[serde(skip)]
     Unknown(String),
 }
 
 impl IPCRequest {
-    pub fn handler_with_context(args: Args) -> impl Fn(&Window, String) -> () {
+    pub fn handler_with_context(_args: Args) -> impl Fn(&Window, String) {
         move |window: &Window, request: String| {
             // let request = request.clone().replace("\"", "");
             let ipc: IPCRequest =
@@ -64,6 +66,9 @@ impl IPCRequest {
                     // smol::future::block_on(future.await);
                 }
                 IPCRequest::Unknown(_) => (),
+                IPCRequest::OpenBrowser { url } => {
+                    let _ = webbrowser::open(&url);
+                }
             };
         }
     }

@@ -80,7 +80,7 @@ fn main() -> anyhow::Result<()> {
     let (send_addr, recv_addr) = smol::channel::unbounded();
     let port = args.dev_port;
 
-    let html_addr = match port.clone() {
+    let html_addr = match port {
         None => {
             smol::spawn(async move {
                 let mut app = tide::new();
@@ -99,7 +99,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     eprintln!("{html_addr}");
-    eprintln!("{:?}", args.melwalletd_path.clone().as_os_str());
+    eprintln!("{:?}", args.melwalletd_path.as_os_str());
     // first start melwalletd
     // TODO: start melwalletd with proper options, especially authentication!
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
