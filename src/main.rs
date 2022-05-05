@@ -50,8 +50,6 @@ pub struct Args {
     wallet_path: Option<PathBuf>,
     #[clap(long)]
     debug_window_open: bool,
-    #[clap(long)]
-    devtools: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -73,6 +71,23 @@ fn main() -> anyhow::Result<()> {
         args
     };
 
+    let mwd_auth_token: String = {
+        let mut fpath = args.data_path.clone().unwrap();
+        fpath.push("auth.txt");
+        // use a file, so that even when melwalletd runs off into the background for some reason, everything still works
+        if let Ok(existing) = std::fs::read(&fpath) {
+            String::from_utf8_lossy(&existing).to_string()
+        } else {
+            let mut buf = [0u8; 32];
+            getrandom::getrandom(&mut buf)?;
+            let r = hex::encode(&buf);
+            std::fs::write(fpath, r.as_bytes())?;
+            r
+        }
+    };
+    eprintln!("auth token = {}", mwd_auth_token);
+    std::env::set_var("MELWALLETD_AUTH_TOKEN", &mwd_auth_token);
+
     let wallet_path = args.wallet_path.clone().unwrap();
     let data_path = args.data_path.clone().unwrap();
     // first, we start a tide-based server that runs off serving the directory
@@ -85,7 +100,7 @@ fn main() -> anyhow::Result<()> {
             smol::spawn(async move {
                 let mut app = tide::new();
                 app.at("/").serve_dir(html_path.unwrap()).unwrap();
-                let mut listener = app.bind("127.0.0.1:9117").await.unwrap();
+                let mut listener = app.bind("127.1.2.3:9117").await.unwrap();
                 send_addr
                     .send(listener.info()[0].connection().to_string())
                     .await
@@ -114,7 +129,12 @@ fn main() -> anyhow::Result<()> {
         })
         .spawn()
         .context("cannot spawn melwalletd")?;
-    let script = include_str!("./js/index.js");
+    scopeguard::defer!(cmd.kill().unwrap());
+    let script = format!(
+        "{}\nwindow.MELWALLETD_AUTH_TOKEN={:?}",
+        include_str!("./js/index.js"),
+        mwd_auth_token
+    );
     let event_loop: EventLoop<()> = EventLoop::new();
 
     let window = WindowBuilder::new()
@@ -126,9 +146,9 @@ fn main() -> anyhow::Result<()> {
     let webview = WebViewBuilder::new(window)?
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
-        .with_devtools(args.devtools)
+        .with_devtools(true)
         .with_ipc_handler(IPCRequest::handler_with_context(args.clone()))
-        .with_initialization_script(script)
+        .with_initialization_script(&script)
         .build()?;
 
     if args.debug_window_open {
@@ -143,10 +163,7 @@ fn main() -> anyhow::Result<()> {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
                 ..
-            } => {
-                scopeguard::defer!(cmd.kill().unwrap());
-                *control_flow = ControlFlow::Exit
-            }
+            } => *control_flow = ControlFlow::Exit,
             Event::RedrawRequested(_window) => {
                 // webview.resize();
             }
