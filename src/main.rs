@@ -73,6 +73,7 @@ fn main() -> anyhow::Result<()> {
 
     let mwd_auth_token: String = {
         let mut fpath = args.data_path.clone().unwrap();
+        std::fs::create_dir_all(&fpath)?;
         fpath.push("auth.txt");
         // use a file, so that even when melwalletd runs off into the background for some reason, everything still works
         if let Ok(existing) = std::fs::read(&fpath) {
@@ -81,7 +82,7 @@ fn main() -> anyhow::Result<()> {
             let mut buf = [0u8; 32];
             getrandom::getrandom(&mut buf)?;
             let r = hex::encode(&buf);
-            std::fs::write(fpath, r.as_bytes())?;
+            std::fs::write(fpath, r.as_bytes()).context("cannot write auth doc")?;
             r
         }
     };
