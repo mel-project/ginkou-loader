@@ -58,16 +58,7 @@ impl IPCRequest {
     pub fn handler_with_context(context: IPCContext) -> impl Fn(&Window, String) {
         move |window: &Window, request: String| {
             // println!("{request}");
-            let ipc: IPCRequest = match serde_json::from_str(&request) {
-                Ok(i) => {
-                    println!("{i:?}");
-                    i
-                }
-                Err(err) => {
-                    eprintln!(" Error parsing Request: {err:?}");
-                    IPCRequest::Unknown(request)
-                }
-            };
+            let ipc: IPCRequest =  serde_json::from_str(&request).unwrap_or(IPCRequest::Unknown(request));
             match ipc {
                 IPCRequest::SetConversionFactor { conversion_factor } => {
                     // window.set_resizable(true);
@@ -101,10 +92,11 @@ impl IPCRequest {
                     )
                     .unwrap();
                 }
-                IPCRequest::Unknown(_) => (),
                 IPCRequest::OpenBrowser { url } => {
                     let _ = webbrowser::open(&url);
                 }
+                IPCRequest::Unknown(_) => (),
+
             };
         }
     }
