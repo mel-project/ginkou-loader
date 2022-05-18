@@ -1,5 +1,4 @@
 function _ipc_handler(_event, params) {
-  console.info("evoking ipc: ", _event);
   let _params = params || {};
   window.ipc.postMessage(JSON.stringify(Object.assign({ _event }, _params)));
 }
@@ -19,3 +18,5 @@ window.onload = function () {
       parseFloat(getComputedStyle(document.documentElement).fontSize) / 16,
   });
 };
+
+// window._ipc_handler = _ipc_handler

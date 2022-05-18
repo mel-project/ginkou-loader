@@ -19,7 +19,7 @@ use wry::{
     webview::{WebContext, WebViewBuilder},
 };
 
-use crate::ipc::IPCRequest;
+use crate::ipc::{IPCRequest, IPCContext};
 
 mod ipc;
 
@@ -43,11 +43,11 @@ pub struct Args {
     #[clap(long, default_value = r#"melwalletd"#)]
     melwalletd_path: PathBuf,
     /// path to persistent data like cookies and Storage
-    #[clap(long)]
-    data_path: Option<PathBuf>,
+    #[clap(long, default_value = "")]
+    data_path: PathBuf,
     /// path to the wallet
-    #[clap(long)]
-    wallet_path: Option<PathBuf>,
+    #[clap(long, default_value = "")]
+    wallet_path: PathBuf,
     #[clap(long)]
     debug_window_open: bool,
 }
@@ -56,23 +56,26 @@ fn main() -> anyhow::Result<()> {
     let args: Args = {
         let mut args = Args::parse();
 
-        args.wallet_path = Some(args.wallet_path.unwrap_or_else(|| {
-            dirs::data_local_dir()
-                .expect("no wallet directory")
-                .tap_mut(|d| d.push("themelio-wallets"))
-        }));
+        if args.wallet_path.as_os_str().is_empty() {
+            args.wallet_path = 
+                dirs::data_local_dir()
+                    .expect("no wallet directory")
+                    .tap_mut(|d| d.push("themelio-wallets"));
+            
+        }
 
-        args.data_path = Some(args.data_path.unwrap_or_else(|| {
-            dirs::data_local_dir()
-                .expect("no wallet directory")
-                .tap_mut(|d| d.push("themelio-wallet-gui-data"))
-        }));
-
+        if args.data_path.as_os_str().is_empty() {
+            args.data_path =
+                dirs::data_local_dir()
+                    .expect("no wallet directory")
+                    .tap_mut(|d| d.push("themelio-wallet-gui-data"));
+        
+        }
         args
     };
 
     let mwd_auth_token: String = {
-        let mut fpath = args.data_path.clone().unwrap();
+        let mut fpath = args.data_path.clone();
         std::fs::create_dir_all(&fpath)?;
         fpath.push("auth.txt");
         // use a file, so that even when melwalletd runs off into the background for some reason, everything still works
@@ -89,8 +92,8 @@ fn main() -> anyhow::Result<()> {
     eprintln!("auth token = {}", mwd_auth_token);
     std::env::set_var("MELWALLETD_AUTH_TOKEN", &mwd_auth_token);
 
-    let wallet_path = args.wallet_path.clone().unwrap();
-    let data_path = args.data_path.clone().unwrap();
+    let wallet_path = args.wallet_path.clone();
+    let data_path = args.data_path.clone();
     // first, we start a tide-based server that runs off serving the directory
     let html_path = args.html_path.clone();
     let (send_addr, recv_addr) = smol::channel::unbounded();
@@ -118,12 +121,15 @@ fn main() -> anyhow::Result<()> {
     eprintln!("{:?}", args.melwalletd_path.as_os_str());
     // first start melwalletd
     // TODO: start melwalletd with proper options, especially authentication!
+
+    let melwalletd_out = std::fs::File::create(data_path.join("melwalletd.log"))?;
+
     let mut cmd = Command::new(args.melwalletd_path.as_os_str())
         .arg("--wallet-dir")
         .arg(wallet_path.as_os_str())
         .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
+        .stdout(melwalletd_out.try_clone()?)
+        .stderr(melwalletd_out)
         .tap_mut(|_c| {
             #[cfg(windows)]
             _c.creation_flags(0x08000000);
@@ -131,6 +137,9 @@ fn main() -> anyhow::Result<()> {
         .spawn()
         .context("cannot spawn melwalletd")?;
     scopeguard::defer!(cmd.kill().unwrap());
+    
+    let ipc_context = IPCContext::from_args(args.clone()).expect("Unable to build IPC context");
+
     let script = format!(
         "{}\nwindow.MELWALLETD_AUTH_TOKEN={:?}",
         include_str!("./js/index.js"),
@@ -148,7 +157,7 @@ fn main() -> anyhow::Result<()> {
         .with_url(&format!("{}/index.html", html_addr))?
         .with_web_context(&mut WebContext::new(Some(data_path)))
         .with_devtools(true)
-        .with_ipc_handler(IPCRequest::handler_with_context(args.clone()))
+        .with_ipc_handler(IPCRequest::handler_with_context(ipc_context))
         .with_initialization_script(&script)
         .build()?;
 
