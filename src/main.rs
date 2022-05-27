@@ -19,7 +19,7 @@ use wry::{
     webview::{WebContext, WebViewBuilder},
 };
 
-use crate::ipc::{IPCRequest, IPCContext};
+use crate::ipc::{IPCContext, IPCRequest};
 
 mod ipc;
 
@@ -48,6 +48,9 @@ pub struct Args {
     /// path to the wallet
     #[clap(long, default_value = "")]
     wallet_path: PathBuf,
+    /// version string to expose to the loaded JS
+    #[clap(long)]
+    version_string: Option<String>,
     #[clap(long)]
     debug_window_open: bool,
 }
@@ -57,19 +60,15 @@ fn main() -> anyhow::Result<()> {
         let mut args = Args::parse();
 
         if args.wallet_path.as_os_str().is_empty() {
-            args.wallet_path = 
-                dirs::data_local_dir()
-                    .expect("no wallet directory")
-                    .tap_mut(|d| d.push("themelio-wallets"));
-            
+            args.wallet_path = dirs::data_local_dir()
+                .expect("no wallet directory")
+                .tap_mut(|d| d.push("themelio-wallets"));
         }
 
         if args.data_path.as_os_str().is_empty() {
-            args.data_path =
-                dirs::data_local_dir()
-                    .expect("no wallet directory")
-                    .tap_mut(|d| d.push("themelio-wallet-gui-data"));
-        
+            args.data_path = dirs::data_local_dir()
+                .expect("no wallet directory")
+                .tap_mut(|d| d.push("themelio-wallet-gui-data"));
         }
         args
     };
@@ -137,13 +136,14 @@ fn main() -> anyhow::Result<()> {
         .spawn()
         .context("cannot spawn melwalletd")?;
     scopeguard::defer!(cmd.kill().unwrap());
-    
+
     let ipc_context = IPCContext::from_args(args.clone()).expect("Unable to build IPC context");
 
     let script = format!(
-        "{}\nwindow.MELWALLETD_AUTH_TOKEN={:?}",
+        "{}\nwindow.MELWALLETD_AUTH_TOKEN={:?}\nwindow.VERSION={:?}",
         include_str!("./js/index.js"),
-        mwd_auth_token
+        mwd_auth_token,
+        args.version_string
     );
     let event_loop: EventLoop<()> = EventLoop::new();
 
